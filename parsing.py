@@ -253,14 +253,47 @@ def check_token_lifetime() -> None:
         print(f"❌ Ошибка при проверке токена: {e}")
 
 
-def parse_ads_table_to_excel(excel_path: str, timeout: int = 30) -> None:
+def parse_ads_table_to_excel(excel_path: str, timeout: int = 60) -> None:
     """Парсит таблицу объявлений на странице аккаунта и сохраняет в Excel."""
     driver = get_driver()
     wait = WebDriverWait(driver, timeout)
 
     print(f"[ПАРСИНГ] Жду появления таблицы объявлений...")
-    wait.until(EC.presence_of_element_located(
-        (By.CSS_SELECTOR, ".js-ads-table-body")))
+
+    # Пробуем разные селекторы для таблицы
+    table_selectors = [
+        ".js-ads-table-body",
+        ".ads-table",
+        ".table-body",
+        "[class*='table']",
+        "[class*='ads']"
+    ]
+
+    table_found = False
+    for selector in table_selectors:
+        try:
+            print(f"[ПАРСИНГ] Пробую селектор: {selector}")
+            wait.until(EC.presence_of_element_located(
+                (By.CSS_SELECTOR, selector)))
+            print(f"[ПАРСИНГ] ✅ Таблица найдена с селектором: {selector}")
+            table_found = True
+            break
+        except Exception as e:
+            print(f"[ПАРСИНГ] ❌ Селектор {selector} не найден: {e}")
+            continue
+
+    if not table_found:
+        print(f"[ПАРСИНГ] ❌ Таблица объявлений не найдена ни с одним селектором")
+        # Сохраняем пустой файл для отладки
+        df = pd.DataFrame([], columns=["Ad Title", "URL", "Views", "Opened", "Clicks", "Actions",
+                          "CTR", "CVR", "CPM", "CPC", "CPA", "Spent", "Budget", "Target", "Status", "Date Added"])
+        df['Экспорт выполнен'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        df['Ошибка'] = "Таблица объявлений не найдена"
+        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Объявления', index=False)
+        print(
+            f"[ФАЙЛ ГОТОВ] {excel_path} готов и можно скачивать (пустой файл для отладки).")
+        return
 
     # Получаем количество строк
     rows_count = len(driver.find_elements(

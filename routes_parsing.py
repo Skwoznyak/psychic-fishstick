@@ -10,6 +10,8 @@ from services import (
     start_parsing_panda28,
     start_parsing_buybox,
     start_parsing_colife,
+    start_parsing_async,
+    get_parsing_status,
 )
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from fastapi.responses import FileResponse, JSONResponse
@@ -22,8 +24,20 @@ from auth_deps import security
 router_parsing = APIRouter()
 
 
+@router_parsing.get("/status", tags=['Статус парсинга'], dependencies=[Depends(security.access_token_required)])
+def get_parsing_status_endpoint() -> dict:
+    """Возвращает текущий статус парсинга"""
+    status = get_parsing_status()
+    return {
+        "is_running": status["is_running"],
+        "progress": status["progress"],
+        "last_update": status["last_update"],
+        "ready_to_download": not status["is_running"] and status["progress"] == "✅ Парсинг завершён"
+    }
+
+
 @router_parsing.post("/elama-856489 nudnoi.ru", tags=['Парсинг страницы'], dependencies=[Depends(security.access_token_required)])
-def run_elama_856489(background_tasks: BackgroundTasks) -> JSONResponse:
+async def run_elama_856489() -> JSONResponse:
     if not load_cookies():
         return JSONResponse(
             status_code=409,
@@ -31,12 +45,15 @@ def run_elama_856489(background_tasks: BackgroundTasks) -> JSONResponse:
                 "message": "Нет сохранённых куки. Сначала вызовите /auth/start, войдите вручную и затем /auth/save",
             },
         )
-    background_tasks.add_task(
-        start_parsing_background_job_elama_856489_nudnoi_ru)
+
+    # Запускаем асинхронный парсинг
+    import asyncio
+    asyncio.create_task(start_parsing_async())
+
     return JSONResponse(
         status_code=202,
         content={
-            "message": "Парсинг elama-856489 nudnoi.ru запущен. Проверьте результат по /download, когда задача завершится."},
+            "message": "Парсинг elama-856489 nudnoi.ru запущен. Проверьте статус по /parsing/status, когда задача завершится."},
     )
 
 

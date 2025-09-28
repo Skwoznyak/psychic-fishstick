@@ -1,9 +1,12 @@
 import os
 import time
 import json
+import asyncio
+import threading
 from datetime import datetime
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
+from concurrent.futures import ThreadPoolExecutor
 
 from parsing import (
     load_cookies,
@@ -18,6 +21,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+# Глобальные переменные для отслеживания статуса
+parsing_status = {
+    "is_running": False,
+    "current_task": None,
+    "progress": "Готов к запуску",
+    "last_update": None
+}
+
+parsing_lock = threading.Lock()
 
 
 def export_path() -> str:
@@ -95,31 +108,93 @@ def persist_cookies() -> None:
             status_code=500, detail=f"Не удалось сохранить куки: {e}")
 
 
+def update_parsing_status(progress: str, is_running: bool = None):
+    """Обновляет статус парсинга"""
+    with parsing_lock:
+        global parsing_status
+        parsing_status["progress"] = progress
+        parsing_status["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if is_running is not None:
+            parsing_status["is_running"] = is_running
+        print(f"📊 [СТАТУС] {progress}")
+
 def start_parsing_background_job_elama_856489_nudnoi_ru() -> None:
-    print(
-        f"🚀 [{datetime.now().strftime('%H:%M:%S')}] Начало парсинга elama-856489 nudnoi.ru")
-    if not load_cookies():
-        print("❌ [ОШИБКА] Нет сохраненных куки")
-        return
-    driver = get_driver()
-    driver.get("https://ads.telegram.org/account")
-    time.sleep(3)
-
-    # Автоклик по кнопке, содержащей точный текст "elama-856489 nudnoi.ru"
     try:
-        clic_elama_856489_nudnoi_ru("elama-856489 nudnoi.ru", timeout=60)
-        print("✅ [КЛИК] Кнопка найдена и нажата")
+        update_parsing_status("🚀 Начало парсинга elama-856489 nudnoi.ru", True)
+        print(f"🚀 [{datetime.now().strftime('%H:%M:%S')}] Начало парсинга elama-856489 nudnoi.ru")
+        
+        update_parsing_status("🔐 Загружаю куки...")
+        print("🔐 [АВТОРИЗАЦИЯ] Загружаю куки...")
+        if not load_cookies():
+            update_parsing_status("❌ Нет сохраненных куки", False)
+            print("❌ [ОШИБКА] Нет сохраненных куки")
+            return
+            
+        update_parsing_status("🌐 Получаю драйвер...")
+        print("🌐 [БРАУЗЕР] Получаю драйвер...")
+        driver = get_driver()
+        
+        update_parsing_status("🌐 Перехожу на страницу аккаунта...")
+        print("🌐 [БРАУЗЕР] Перехожу на страницу аккаунта...")
+        driver.get("https://ads.telegram.org/account")
+        
+        update_parsing_status("⏳ Жду загрузки страницы...")
+        print("⏳ [ОЖИДАНИЕ] Жду загрузки страницы...")
+        time.sleep(3)
+
+        # Автоклик по кнопке, содержащей точный текст "elama-856489 nudnoi.ru"
+        update_parsing_status("🎯 Ищу кнопку аккаунта...")
+        try:
+            clic_elama_856489_nudnoi_ru("elama-856489 nudnoi.ru", timeout=60)
+            update_parsing_status("✅ Кнопка найдена и нажата")
+            print("✅ [КЛИК] Кнопка найдена и нажата")
+        except Exception as e:
+            update_parsing_status(f"❌ Не удалось найти кнопку: {e}")
+            print(f"❌ [ОШИБКА] Не удалось найти кнопку: {e}")
+
+        update_parsing_status("⏰ Проверяю время жизни токена...")
+        print("⏰ [ПРОВЕРКА] Проверяю время жизни токена...")
+        check_token_lifetime()
+
+        update_parsing_status("📊 Начинаю парсинг данных...")
+        print("📊 [ПАРСИНГ] Начинаю парсинг данных...")
+        filename = "elama-856489 nudnoi.ru.xlsx"
+        parse_ads_table_to_excel(filename)
+        
+        update_parsing_status("💾 Сохраняю файл...")
+        save_last_parsed_file(filename)
+        
+        update_parsing_status("✅ Парсинг завершён", False)
+        print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Парсинг завершён")
+        
     except Exception as e:
-        print(f"❌ [ОШИБКА] Не удалось найти кнопку: {e}")
+        update_parsing_status(f"❌ Критическая ошибка: {e}", False)
+        print(f"❌ [КРИТИЧЕСКАЯ ОШИБКА] {e}")
+        import traceback
+        print(f"❌ [СТЕК ТРЕЙС] {traceback.format_exc()}")
+        # Сохраняем файл с ошибкой
+        try:
+            filename = "elama-856489 nudnoi.ru.xlsx"
+            import pandas as pd
+            df = pd.DataFrame([], columns=["Ошибка"])
+            df.loc[0] = f"Ошибка парсинга: {str(e)}"
+            df['Время ошибки'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Ошибка', index=False)
+            save_last_parsed_file(filename)
+        except:
+            pass
 
-    print("⏰ [ПРОВЕРКА] Проверяю время жизни токена...")
-    check_token_lifetime()
+async def start_parsing_async():
+    """Асинхронная версия парсинга"""
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as executor:
+        await loop.run_in_executor(executor, start_parsing_background_job_elama_856489_nudnoi_ru)
 
-    print("📊 [ПАРСИНГ] Начинаю парсинг данных...")
-    filename = "elama-856489 nudnoi.ru.xlsx"
-    parse_ads_table_to_excel(filename)
-    save_last_parsed_file(filename)
-    print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Парсинг завершён")
+def get_parsing_status():
+    """Возвращает текущий статус парсинга"""
+    with parsing_lock:
+        return parsing_status.copy()
 
 
 def start_parsing_rocketcars() -> None:
