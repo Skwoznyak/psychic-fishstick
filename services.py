@@ -14,6 +14,11 @@ from parsing import (
     clic_elama_856489_nudnoi_ru,
 )
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
 
 def export_path() -> str:
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), "elama-856489 nudnoi.ru.xlsx")
@@ -42,23 +47,25 @@ def open_login_page(phone: str) -> None:
     driver = get_driver()
     driver.get("https://ads.telegram.org/account")
     import time
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.common.keys import Keys
 
-    # 1. Нажать на кнопку "Log in to Start Advertizing"
-    login_btn = driver.find_element(By.CSS_SELECTOR, "a.login-link")
+    wait = WebDriverWait(driver, 10)
+    # 1. Дождаться, когда кнопка станет кликабельной, и кликнуть по ней
+    login_btn = wait.until(EC.element_to_be_clickable(
+        (By.CSS_SELECTOR, "a.login-link")))
+    driver.execute_script("arguments[0].scrollIntoView();", login_btn)
     login_btn.click()
     time.sleep(1)
 
     # 2. Ввести телефон
-    phone_input = driver.find_element(By.ID, "phone-number")
+    phone_input = wait.until(
+        EC.visibility_of_element_located((By.ID, "phone-number")))
     phone_input.clear()
     phone_input.send_keys(phone)
     time.sleep(1)
 
     # 3. Нажать на кнопку "Next"
-    next_btn = driver.find_element(
-        By.CSS_SELECTOR, "button[type='submit'].btn-link.btn-lg")
+    next_btn = wait.until(EC.element_to_be_clickable(
+        (By.CSS_SELECTOR, "button[type='submit'].btn-link.btn-lg")))
     next_btn.click()
     time.sleep(2)
 
