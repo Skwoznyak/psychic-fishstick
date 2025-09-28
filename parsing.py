@@ -9,6 +9,7 @@ import time
 import csv
 import pandas as pd
 from datetime import datetime, timedelta
+from selenium.webdriver.chrome.service import Service
 
 # Ленивая инициализация драйвера, чтобы он не создавался на импорт модуля
 driver = None
@@ -25,7 +26,8 @@ def get_driver():
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
         chrome_options.binary_location = "/usr/bin/chromium"
-        driver = webdriver.Chrome(options=chrome_options)
+        service = Service("/usr/bin/chromedriver")
+        driver = webdriver.Chrome(service=service, options=chrome_options)
     return driver
 
 
