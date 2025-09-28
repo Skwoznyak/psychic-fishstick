@@ -54,39 +54,35 @@ def open_login_page(phone: str) -> None:
 
     wait = WebDriverWait(driver, 10)
 
-    # Попробовать закрыть popup, если он есть
+    # Попробовать закрыть popup клавишей ESC (на всякий случай)
     try:
-        close_btn = driver.find_element(
-            By.CSS_SELECTOR, ".popup-container .close, .popup-container .close-btn, .popup-container button[aria-label='Close']")
-        close_btn.click()
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
         time.sleep(1)
     except Exception:
         pass
 
-    # Ждать, пока popup исчезнет
-    try:
-        wait.until(EC.invisibility_of_element_located(
-            (By.ID, "login-popup-container")))
-    except Exception:
-        pass
-
-    # 1. Дождаться, когда кнопка станет кликабельной, и кликнуть по ней
+    # 1. Кликнуть по кнопке "Log in to Start Advertizing"
     login_btn = wait.until(EC.element_to_be_clickable(
         (By.CSS_SELECTOR, "a.login-link")))
     driver.execute_script("arguments[0].scrollIntoView();", login_btn)
     login_btn.click()
     time.sleep(1)
 
-    # 2. Ввести телефон
+    # 2. Дождаться, когда форма send-form станет видимой (уберётся класс hide)
+    wait.until(lambda d: "hide" not in d.find_element(
+        By.ID, "send-form").get_attribute("class"))
+
+    # 3. Ввести телефон
     phone_input = wait.until(
         EC.visibility_of_element_located((By.ID, "phone-number")))
     phone_input.clear()
     phone_input.send_keys(phone)
     time.sleep(1)
 
-    # 3. Нажать на кнопку "Next"
-    next_btn = wait.until(EC.element_to_be_clickable(
-        (By.CSS_SELECTOR, "button[type='submit'].btn-link.btn-lg")))
+    # 4. Кликнуть по кнопку "Next" внутри формы send-form
+    send_form = driver.find_element(By.ID, "send-form")
+    next_btn = send_form.find_element(
+        By.CSS_SELECTOR, "button[type='submit'].btn-link.btn-lg")
     next_btn.click()
     time.sleep(2)
 
