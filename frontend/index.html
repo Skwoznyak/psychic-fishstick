@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Ads Parser</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <h1>Telegram Ads Parser</h1>
+            </div>
+            <div class="auth-section">
+                <div id="login-form" class="auth-form">
+                    <input type="password" id="api-key" placeholder="Введите API ключ" class="input">
+                    <button id="login-btn" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Войти
+                    </button>
+                </div>
+                <div id="user-info" class="user-info" style="display: none;">
+                    <span class="user-status">
+                        <i class="fas fa-user-check"></i> Авторизован
+                    </span>
+                    <button id="logout-btn" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Auth Section -->
+            <section id="auth-section" class="section">
+                <div class="card">
+                    <h2><i class="fas fa-key"></i> Авторизация</h2>
+                    <p>Для начала работы необходимо авторизоваться в Telegram Ads</p>
+                    <div class="auth-buttons">
+                        <button id="auth-start-btn" class="btn btn-primary" disabled>
+                            <i class="fas fa-external-link-alt"></i> Открыть страницу входа
+                        </button>
+                        <button id="auth-save-btn" class="btn btn-success" disabled>
+                            <i class="fas fa-save"></i> Сохранить куки
+                        </button>
+                    </div>
+                    <div class="auth-hint">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Сначала войдите с API ключом, чтобы разблокировать кнопки авторизации</span>
+                    </div>
+                    <div id="auth-status" class="status-message"></div>
+                </div>
+            </section>
+
+            <!-- Parsing Section -->
+            <section id="parsing-section" class="section" style="display: none;">
+                <div class="card">
+                    <h2><i class="fas fa-database"></i> Парсинг данных</h2>
+                    <p>Выберите аккаунт для парсинга:</p>
+
+                    <div class="parsing-grid">
+                        <div class="parsing-card" data-account="elama-856489 nudnoi.ru">
+                            <div class="account-icon">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                            <h3>Nudnoi.ru</h3>
+                            <p>elama-856489 nudnoi.ru</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+
+                        <div class="parsing-card" data-account="rocketcars">
+                            <div class="account-icon">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <h3>RocketCars</h3>
+                            <p>elama-249960 RocketCarsMSK</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+
+                        <div class="parsing-card" data-account="buycar">
+                            <div class="account-icon">
+                                <i class="fas fa-car"></i>
+                            </div>
+                            <h3>BuyCar</h3>
+                            <p>Telescope / buycar_with_uss</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+
+                        <div class="parsing-card" data-account="coffelike">
+                            <div class="account-icon">
+                                <i class="fas fa-coffee"></i>
+                            </div>
+                            <h3>Coffelike</h3>
+                            <p>elama-126515 on_tcscoffee</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+
+                        <div class="parsing-card" data-account="panda28">
+                            <div class="account-icon">
+                                <i class="fas fa-shipping-fast"></i>
+                            </div>
+                            <h3>Panda 28</h3>
+                            <p>Telescope_SS_CR / panda_cargo_28</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+
+                        <div class="parsing-card" data-account="buybox">
+                            <div class="account-icon">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <h3>BuyBox</h3>
+                            <p>Telescope_SS_CR / BuyBox_China</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+
+                        <div class="parsing-card" data-account="colife">
+                            <div class="account-icon">
+                                <i class="fas fa-heart"></i>
+                            </div>
+                            <h3>Colife Invest</h3>
+                            <p>elama-489613 investcolife RE</p>
+                            <button class="btn btn-primary parse-btn">
+                                <i class="fas fa-play"></i> Запустить
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Section -->
+                    <div id="progress-section" class="progress-section" style="display: none;">
+                        <div class="progress-card">
+                            <h3><i class="fas fa-cogs"></i> Парсинг в процессе</h3>
+                            <div class="progress-bar">
+                                <div id="progress-fill" class="progress-fill"></div>
+                            </div>
+                            <div class="progress-info">
+                                <span id="progress-text">Инициализация...</span>
+                                <span id="progress-percent">0%</span>
+                            </div>
+                            <div class="progress-steps">
+                                <div class="step active" id="step-1">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Запуск парсинга</span>
+                                </div>
+                                <div class="step" id="step-2">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span>Авторизация</span>
+                                </div>
+                                <div class="step" id="step-3">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Поиск кнопки</span>
+                                </div>
+                                <div class="step" id="step-4">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Парсинг данных</span>
+                                </div>
+                                <div class="step" id="step-5">
+                                    <i class="fas fa-circle"></i>
+                                    <span>Сохранение файла</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="parsing-status" class="status-message"></div>
+                </div>
+            </section>
+
+            <!-- Download Section -->
+            <section id="download-section" class="section" style="display: none;">
+                <div class="card">
+                    <h2><i class="fas fa-download"></i> Скачивание файлов</h2>
+                    <p>Проверьте статус и скачайте последний созданный файл</p>
+
+                    <div class="download-controls">
+                        <button id="check-status-btn" class="btn btn-info">
+                            <i class="fas fa-sync"></i> Проверить статус
+                        </button>
+                        <button id="download-btn" class="btn btn-success" disabled>
+                            <i class="fas fa-download"></i> Скачать файл
+                        </button>
+                    </div>
+
+                    <div id="download-status" class="status-message"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2024 Telegram Ads Parser. Все права защищены.</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Обработка запроса...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,10 @@
+.env
+cookies
+cookies_for_max.pkl
+.env
+*.env
+*.pkl
+*.sqlite3
+*.db
+*.pyc
+__pycache__/
