@@ -287,7 +287,18 @@ def parse_ads_table_to_excel(excel_path: str, timeout: int = 60) -> None:
         # Сохраняем пустой файл для отладки
         df = pd.DataFrame([], columns=["Ad Title", "URL", "Views", "Opened", "Clicks", "Actions",
                           "CTR", "CVR", "CPM", "CPC", "CPA", "Spent", "Budget", "Target", "Status", "Date Added"])
-        df['Экспорт выполнен'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Добавляем информацию о времени с часовым поясом
+        import pytz
+        try:
+            moscow_tz = pytz.timezone('Europe/Moscow')
+            local_time = datetime.now(moscow_tz)
+            df['Экспорт выполнен'] = local_time.strftime(
+                "%Y-%m-%d %H:%M:%S MSK")
+        except:
+            df['Экспорт выполнен'] = datetime.utcnow().strftime(
+                "%Y-%m-%d %H:%M:%S UTC")
+
         df['Ошибка'] = "Таблица объявлений не найдена"
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='Объявления', index=False)
@@ -381,7 +392,18 @@ def parse_ads_table_to_excel(excel_path: str, timeout: int = 60) -> None:
 
     # Создаём DataFrame и сохраняем в Excel
     df = pd.DataFrame(data_rows, columns=headers)
-    df['Экспорт выполнен'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Добавляем информацию о времени с часовым поясом
+    import pytz
+    try:
+        # Пробуем использовать московское время
+        moscow_tz = pytz.timezone('Europe/Moscow')
+        local_time = datetime.now(moscow_tz)
+        df['Экспорт выполнен'] = local_time.strftime("%Y-%m-%d %H:%M:%S MSK")
+    except:
+        # Если pytz не установлен, используем UTC
+        df['Экспорт выполнен'] = datetime.utcnow().strftime(
+            "%Y-%m-%d %H:%M:%S UTC")
 
     with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='Объявления', index=False)

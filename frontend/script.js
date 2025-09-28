@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://tg-ads-fastapi.onrender.com';
 
 // Global state
 let authToken = localStorage.getItem('authToken');
@@ -15,6 +15,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const authStartBtn = document.getElementById('auth-start-btn');
 const authSaveBtn = document.getElementById('auth-save-btn');
 const authStatus = document.getElementById('auth-status');
+const phoneInput = document.getElementById('phone-input');
 
 const parsingSection = document.getElementById('parsing-section');
 const downloadSection = document.getElementById('download-section');
@@ -27,6 +28,7 @@ const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
 const progressPercent = document.getElementById('progress-percent');
 const progressSteps = document.querySelectorAll('.step');
+const parsingLogs = document.getElementById('parsing-logs');
 
 const checkStatusBtn = document.getElementById('check-status-btn');
 const downloadBtn = document.getElementById('download-btn');
@@ -68,12 +70,13 @@ function showAuthenticatedState() {
     userInfo.style.display = 'flex';
     isAuthenticated = true;
 
-    // Enable auth buttons after successful login
+    // Enable auth buttons and phone input after successful login
     authStartBtn.disabled = false;
     authSaveBtn.disabled = false;
+    phoneInput.disabled = false;
 
     // Update button text to show they're enabled
-    authStartBtn.innerHTML = '<i class="fas fa-external-link-alt"></i> Открыть страницу входа';
+    authStartBtn.innerHTML = '<i class="fas fa-external-link-alt"></i> Отправить номер';
     authSaveBtn.innerHTML = '<i class="fas fa-save"></i> Сохранить куки';
 }
 
@@ -195,11 +198,19 @@ function handleLogout() {
 
 // Auth Functions
 async function handleAuthStart() {
+    const phone = phoneInput.value.trim();
+
+    if (!phone) {
+        showStatus(authStatus, 'Введите номер телефона', 'error');
+        return;
+    }
+
     showLoading();
 
     try {
         const response = await apiRequest('/auth/start', {
-            method: 'POST'
+            method: 'POST',
+            body: JSON.stringify({ phone: phone })
         });
 
         const data = await response.json();
@@ -252,6 +263,9 @@ function resetProgress() {
             step.classList.add('active');
         }
     });
+
+    // Clear logs
+    parsingLogs.innerHTML = '<div class="log-entry">Ожидание начала парсинга...</div>';
 }
 
 function updateProgress(step, text, percent) {
@@ -292,6 +306,23 @@ function completeProgress() {
     }, 3000);
 }
 
+// Log Functions
+function addLogEntry(message, type = 'info') {
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry ${type}`;
+    logEntry.textContent = message;
+    parsingLogs.appendChild(logEntry);
+
+    // Auto-scroll to bottom
+    parsingLogs.scrollTop = parsingLogs.scrollHeight;
+
+    // Keep only last 50 entries
+    const entries = parsingLogs.querySelectorAll('.log-entry');
+    if (entries.length > 50) {
+        entries[0].remove();
+    }
+}
+
 // Parsing Functions
 async function handleParse(event) {
     const button = event.target;
@@ -303,16 +334,12 @@ async function handleParse(event) {
 
     showProgress();
     updateProgress(1, 'Запуск парсинга...', 10);
+    addLogEntry(`🚀 Начало парсинга ${account}`, 'status');
 
     try {
         const endpoint = account === 'elama-856489 nudnoi.ru'
-            ? '/elama-856489%20nudnoi.ru'
-            : `/${account}`;
-
-        // Simulate progress steps
-        setTimeout(() => updateProgress(2, 'Авторизация в системе...', 25), 1000);
-        setTimeout(() => updateProgress(3, 'Поиск кнопки аккаунта...', 50), 2000);
-        setTimeout(() => updateProgress(4, 'Парсинг данных...', 75), 3000);
+            ? '/parsing/elama-856489%20nudnoi.ru'
+            : `/parsing/${account}`;
 
         const response = await apiRequest(endpoint, {
             method: 'POST'
@@ -320,19 +347,70 @@ async function handleParse(event) {
 
         const data = await response.json();
         showStatus(parsingStatus, data.message, 'success');
+        addLogEntry(`✅ Парсинг запущен: ${data.message}`, 'success');
 
-        // Complete progress
-        setTimeout(() => {
-            updateProgress(5, 'Сохранение файла...', 90);
-            setTimeout(() => completeProgress(), 1000);
-        }, 4000);
+        // Start monitoring status
+        startStatusMonitoring();
 
     } catch (error) {
         hideProgress();
         showStatus(parsingStatus, `Ошибка парсинга: ${error.message}`, 'error');
+        addLogEntry(`❌ Ошибка парсинга: ${error.message}`, 'error');
     } finally {
         button.disabled = false;
         button.innerHTML = '<i class="fas fa-play"></i> Запустить';
+    }
+}
+
+// Status Monitoring
+let statusMonitoringInterval;
+
+function startStatusMonitoring() {
+    if (statusMonitoringInterval) clearInterval(statusMonitoringInterval);
+
+    statusMonitoringInterval = setInterval(async () => {
+        try {
+            const response = await apiRequest('/parsing/status');
+            const data = await response.json();
+
+            // Update progress based on status
+            if (data.is_running) {
+                updateProgressFromStatus(data.progress);
+                addLogEntry(`📊 [СТАТУС] ${data.progress}`, 'info');
+            } else if (data.ready_to_download) {
+                completeProgress();
+                addLogEntry(`✅ Парсинг завершён! Файл готов к скачиванию.`, 'success');
+                stopStatusMonitoring();
+            }
+        } catch (error) {
+            addLogEntry(`❌ Ошибка проверки статуса: ${error.message}`, 'error');
+        }
+    }, 2000); // Check every 2 seconds
+}
+
+function stopStatusMonitoring() {
+    if (statusMonitoringInterval) {
+        clearInterval(statusMonitoringInterval);
+        statusMonitoringInterval = null;
+    }
+}
+
+function updateProgressFromStatus(statusText) {
+    // Map status text to progress steps
+    if (statusText.includes('Начало парсинга')) {
+        updateProgress(1, statusText, 10);
+    } else if (statusText.includes('Загружаю куки') || statusText.includes('Авторизация')) {
+        updateProgress(2, statusText, 25);
+    } else if (statusText.includes('Получаю драйвер') || statusText.includes('Перехожу на страницу')) {
+        updateProgress(2, statusText, 35);
+    } else if (statusText.includes('Ищу кнопку') || statusText.includes('Кнопка найдена')) {
+        updateProgress(3, statusText, 50);
+    } else if (statusText.includes('Проверяю время жизни') || statusText.includes('Токен действителен')) {
+        updateProgress(3, statusText, 60);
+    } else if (statusText.includes('Начинаю парсинг') || statusText.includes('Парсинг данных')) {
+        updateProgress(4, statusText, 75);
+    } else if (statusText.includes('Сохраняю файл') || statusText.includes('Файл готов')) {
+        updateProgress(5, statusText, 90);
     }
 }
 
@@ -341,15 +419,15 @@ async function checkFileStatus() {
     showLoading();
 
     try {
-        const response = await apiRequest('/status');
+        const response = await apiRequest('/parsing/status');
         const data = await response.json();
 
         if (data.ready_to_download) {
             downloadBtn.disabled = false;
-            showStatus(downloadStatus, `Файл готов: ${data.last_file}`, 'success');
+            showStatus(downloadStatus, `Файл готов к скачиванию`, 'success');
         } else {
             downloadBtn.disabled = true;
-            showStatus(downloadStatus, data.message, 'info');
+            showStatus(downloadStatus, data.progress || 'Парсинг в процессе...', 'info');
         }
 
     } catch (error) {
@@ -378,12 +456,14 @@ async function downloadFile() {
             document.body.removeChild(a);
 
             showStatus(downloadStatus, 'Файл успешно скачан!', 'success');
+            addLogEntry(`📁 Файл успешно скачан!`, 'success');
         } else {
             throw new Error('Неверный формат файла');
         }
 
     } catch (error) {
         showStatus(downloadStatus, `Ошибка скачивания: ${error.message}`, 'error');
+        addLogEntry(`❌ Ошибка скачивания: ${error.message}`, 'error');
     } finally {
         hideLoading();
     }

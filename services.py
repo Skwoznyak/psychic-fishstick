@@ -58,6 +58,7 @@ def get_last_parsed_file():
 
 def open_login_page(phone: str) -> None:
     driver = get_driver()
+    print(f"[АВТОРИЗАЦИЯ] 🌐 Перехожу на страницу аккаунта...")
     driver.get("https://ads.telegram.org/account")
     import time
     from selenium.webdriver.support.ui import WebDriverWait
@@ -65,7 +66,9 @@ def open_login_page(phone: str) -> None:
     from selenium.webdriver.common.by import By
     from selenium.webdriver.common.keys import Keys
 
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 15)  # Увеличиваем timeout
+    print(f"[АВТОРИЗАЦИЯ] ⏳ Жду загрузки страницы...")
+    time.sleep(3)  # Даем время на загрузку
 
     # Попробовать закрыть popup клавишей ESC (на всякий случай)
     try:
@@ -75,28 +78,108 @@ def open_login_page(phone: str) -> None:
         pass
 
     # 1. Кликнуть по кнопке "Log in to Start Advertizing"
-    login_btn = wait.until(EC.element_to_be_clickable(
-        (By.CSS_SELECTOR, "a.login-link")))
+    # Пробуем разные селекторы для кнопки входа
+    login_selectors = [
+        "a.login-link",
+        "a[href='/auth']",
+        ".login-link",
+        "a.btn.pr-btn.login-link",
+        "a[class*='login']",
+        "a[href*='auth']"
+    ]
+
+    login_btn = None
+    for selector in login_selectors:
+        try:
+            print(f"[АВТОРИЗАЦИЯ] Пробую селектор: {selector}")
+            login_btn = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+            print(f"[АВТОРИЗАЦИЯ] ✅ Кнопка найдена с селектором: {selector}")
+            break
+        except Exception as e:
+            print(f"[АВТОРИЗАЦИЯ] ❌ Селектор {selector} не найден: {e}")
+            continue
+
+    if not login_btn:
+        raise Exception("Кнопка входа не найдена ни с одним селектором")
+
     driver.execute_script("arguments[0].scrollIntoView();", login_btn)
     login_btn.click()
-    time.sleep(1)
+    time.sleep(2)
 
     # 2. Дождаться, когда форма send-form станет видимой (уберётся класс hide)
-    wait.until(lambda d: "hide" not in d.find_element(
-        By.ID, "send-form").get_attribute("class"))
+    try:
+        print(f"[АВТОРИЗАЦИЯ] Жду появления формы входа...")
+        wait.until(lambda d: "hide" not in d.find_element(
+            By.ID, "send-form").get_attribute("class"))
+        print(f"[АВТОРИЗАЦИЯ] ✅ Форма входа появилась")
+    except Exception as e:
+        print(f"[АВТОРИЗАЦИЯ] ❌ Форма входа не появилась: {e}")
+        # Пробуем найти форму по альтернативным селекторам
+        form_selectors = ["#send-form", ".send-form", "form", "[id*='form']"]
+        for selector in form_selectors:
+            try:
+                form = driver.find_element(By.CSS_SELECTOR, selector)
+                if form.is_displayed():
+                    print(
+                        f"[АВТОРИЗАЦИЯ] ✅ Форма найдена с селектором: {selector}")
+                    break
+            except:
+                continue
 
     # 3. Ввести телефон
-    phone_input = wait.until(
-        EC.visibility_of_element_located((By.ID, "phone-number")))
+    phone_selectors = ["#phone-number", "input[type='tel']",
+                       "input[placeholder*='+']", "input[name*='phone']"]
+    phone_input = None
+
+    for selector in phone_selectors:
+        try:
+            print(f"[АВТОРИЗАЦИЯ] Пробую найти поле телефона: {selector}")
+            phone_input = wait.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, selector)))
+            print(
+                f"[АВТОРИЗАЦИЯ] ✅ Поле телефона найдено с селектором: {selector}")
+            break
+        except Exception as e:
+            print(f"[АВТОРИЗАЦИЯ] ❌ Селектор {selector} не найден: {e}")
+            continue
+
+    if not phone_input:
+        raise Exception("Поле ввода телефона не найдено")
+
     phone_input.clear()
     phone_input.send_keys(phone)
+    print(f"[АВТОРИЗАЦИЯ] ✅ Номер телефона введен: {phone}")
     time.sleep(1)
 
     # 4. Кликнуть по кнопку "Next" внутри формы send-form
-    send_form = driver.find_element(By.ID, "send-form")
-    next_btn = send_form.find_element(
-        By.CSS_SELECTOR, "button[type='submit'].btn-link.btn-lg")
+    next_selectors = [
+        "button[type='submit'].btn-link.btn-lg",
+        "button[type='submit']",
+        "button.btn-link.btn-lg",
+        "button:contains('Next')",
+        "input[type='submit']",
+        "button[class*='btn']"
+    ]
+
+    next_btn = None
+    for selector in next_selectors:
+        try:
+            print(f"[АВТОРИЗАЦИЯ] Пробую найти кнопку Next: {selector}")
+            next_btn = wait.until(EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, selector)))
+            print(
+                f"[АВТОРИЗАЦИЯ] ✅ Кнопка Next найдена с селектором: {selector}")
+            break
+        except Exception as e:
+            print(f"[АВТОРИЗАЦИЯ] ❌ Селектор {selector} не найден: {e}")
+            continue
+
+    if not next_btn:
+        raise Exception("Кнопка Next не найдена")
+
     next_btn.click()
+    print(f"[АВТОРИЗАЦИЯ] ✅ Кнопка Next нажата")
     time.sleep(2)
 
 
@@ -113,31 +196,34 @@ def update_parsing_status(progress: str, is_running: bool = None):
     with parsing_lock:
         global parsing_status
         parsing_status["progress"] = progress
-        parsing_status["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        parsing_status["last_update"] = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S")
         if is_running is not None:
             parsing_status["is_running"] = is_running
         print(f"📊 [СТАТУС] {progress}")
 
+
 def start_parsing_background_job_elama_856489_nudnoi_ru() -> None:
     try:
         update_parsing_status("🚀 Начало парсинга elama-856489 nudnoi.ru", True)
-        print(f"🚀 [{datetime.now().strftime('%H:%M:%S')}] Начало парсинга elama-856489 nudnoi.ru")
-        
+        print(
+            f"🚀 [{datetime.now().strftime('%H:%M:%S')}] Начало парсинга elama-856489 nudnoi.ru")
+
         update_parsing_status("🔐 Загружаю куки...")
         print("🔐 [АВТОРИЗАЦИЯ] Загружаю куки...")
         if not load_cookies():
             update_parsing_status("❌ Нет сохраненных куки", False)
             print("❌ [ОШИБКА] Нет сохраненных куки")
             return
-            
+
         update_parsing_status("🌐 Получаю драйвер...")
         print("🌐 [БРАУЗЕР] Получаю драйвер...")
         driver = get_driver()
-        
+
         update_parsing_status("🌐 Перехожу на страницу аккаунта...")
         print("🌐 [БРАУЗЕР] Перехожу на страницу аккаунта...")
         driver.get("https://ads.telegram.org/account")
-        
+
         update_parsing_status("⏳ Жду загрузки страницы...")
         print("⏳ [ОЖИДАНИЕ] Жду загрузки страницы...")
         time.sleep(3)
@@ -160,13 +246,13 @@ def start_parsing_background_job_elama_856489_nudnoi_ru() -> None:
         print("📊 [ПАРСИНГ] Начинаю парсинг данных...")
         filename = "elama-856489 nudnoi.ru.xlsx"
         parse_ads_table_to_excel(filename)
-        
+
         update_parsing_status("💾 Сохраняю файл...")
         save_last_parsed_file(filename)
-        
+
         update_parsing_status("✅ Парсинг завершён", False)
         print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Парсинг завершён")
-        
+
     except Exception as e:
         update_parsing_status(f"❌ Критическая ошибка: {e}", False)
         print(f"❌ [КРИТИЧЕСКАЯ ОШИБКА] {e}")
@@ -178,18 +264,30 @@ def start_parsing_background_job_elama_856489_nudnoi_ru() -> None:
             import pandas as pd
             df = pd.DataFrame([], columns=["Ошибка"])
             df.loc[0] = f"Ошибка парсинга: {str(e)}"
-            df['Время ошибки'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Добавляем время ошибки с часовым поясом
+            import pytz
+            try:
+                moscow_tz = pytz.timezone('Europe/Moscow')
+                local_time = datetime.now(moscow_tz)
+                df['Время ошибки'] = local_time.strftime(
+                    "%Y-%m-%d %H:%M:%S MSK")
+            except:
+                df['Время ошибки'] = datetime.utcnow().strftime(
+                    "%Y-%m-%d %H:%M:%S UTC")
             with pd.ExcelWriter(filename, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Ошибка', index=False)
             save_last_parsed_file(filename)
         except:
             pass
 
+
 async def start_parsing_async():
     """Асинхронная версия парсинга"""
     loop = asyncio.get_event_loop()
     with ThreadPoolExecutor() as executor:
         await loop.run_in_executor(executor, start_parsing_background_job_elama_856489_nudnoi_ru)
+
 
 def get_parsing_status():
     """Возвращает текущий статус парсинга"""

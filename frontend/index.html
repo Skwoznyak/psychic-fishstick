@@ -42,9 +42,16 @@
                 <div class="card">
                     <h2><i class="fas fa-key"></i> Авторизация</h2>
                     <p>Для начала работы необходимо авторизоваться в Telegram Ads</p>
+
+                    <div class="phone-input-section">
+                        <label for="phone-input">Номер телефона:</label>
+                        <input type="tel" id="phone-input" placeholder="+1234567890" class="input" disabled>
+                        <small class="input-hint">Введите номер телефона для авторизации</small>
+                    </div>
+
                     <div class="auth-buttons">
                         <button id="auth-start-btn" class="btn btn-primary" disabled>
-                            <i class="fas fa-external-link-alt"></i> Открыть страницу входа
+                            <i class="fas fa-external-link-alt"></i> Отправить номер
                         </button>
                         <button id="auth-save-btn" class="btn btn-success" disabled>
                             <i class="fas fa-save"></i> Сохранить куки
@@ -52,7 +59,8 @@
                     </div>
                     <div class="auth-hint">
                         <i class="fas fa-info-circle"></i>
-                        <span>Сначала войдите с API ключом, чтобы разблокировать кнопки авторизации</span>
+                        <span>Сначала войдите с API ключом, затем введите номер телефона и нажмите "Отправить
+                            номер"</span>
                     </div>
                     <div id="auth-status" class="status-message"></div>
                 </div>
@@ -154,6 +162,15 @@
                                 <span id="progress-text">Инициализация...</span>
                                 <span id="progress-percent">0%</span>
                             </div>
+
+                            <!-- Logs Section -->
+                            <div class="logs-section">
+                                <h4><i class="fas fa-terminal"></i> Логи парсинга</h4>
+                                <div id="parsing-logs" class="logs-container">
+                                    <div class="log-entry">Ожидание начала парсинга...</div>
+                                </div>
+                            </div>
+
                             <div class="progress-steps">
                                 <div class="step active" id="step-1">
                                     <i class="fas fa-check-circle"></i>
