@@ -96,7 +96,10 @@ def persist_cookies() -> None:
 
 
 def start_parsing_background_job_elama_856489_nudnoi_ru() -> None:
+    print(
+        f"🚀 [{datetime.now().strftime('%H:%M:%S')}] Начало парсинга elama-856489 nudnoi.ru")
     if not load_cookies():
+        print("❌ [ОШИБКА] Нет сохраненных куки")
         return
     driver = get_driver()
     driver.get("https://ads.telegram.org/account")
@@ -105,11 +108,18 @@ def start_parsing_background_job_elama_856489_nudnoi_ru() -> None:
     # Автоклик по кнопке, содержащей точный текст "elama-856489 nudnoi.ru"
     try:
         clic_elama_856489_nudnoi_ru("elama-856489 nudnoi.ru", timeout=60)
-    except Exception:
-        pass
+        print("✅ [КЛИК] Кнопка найдена и нажата")
+    except Exception as e:
+        print(f"❌ [ОШИБКА] Не удалось найти кнопку: {e}")
 
+    print("⏰ [ПРОВЕРКА] Проверяю время жизни токена...")
     check_token_lifetime()
-    parse_ads_table_to_excel(export_path())
+
+    print("📊 [ПАРСИНГ] Начинаю парсинг данных...")
+    filename = "elama-856489 nudnoi.ru.xlsx"
+    parse_ads_table_to_excel(filename)
+    save_last_parsed_file(filename)
+    print(f"✅ [{datetime.now().strftime('%H:%M:%S')}] Парсинг завершён")
 
 
 def start_parsing_rocketcars() -> None:

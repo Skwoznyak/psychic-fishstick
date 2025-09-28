@@ -254,121 +254,102 @@ def check_token_lifetime() -> None:
 
 
 def parse_ads_table_to_excel(excel_path: str, timeout: int = 30) -> None:
-    """Парсит таблицу объявлений на странице аккаунта и сохраняет в CSV.
-
-    Колонки соответствуют шапке таблицы в интерфейсе Telegram Ads.
-    """
+    """Парсит таблицу объявлений на странице аккаунта и сохраняет в Excel."""
     driver = get_driver()
     wait = WebDriverWait(driver, timeout)
+
+    print(f"[ПАРСИНГ] Жду появления таблицы объявлений...")
     wait.until(EC.presence_of_element_located(
         (By.CSS_SELECTOR, ".js-ads-table-body")))
 
-    rows = driver.find_elements(By.CSS_SELECTOR, ".js-ads-table-body tr")
+    # Получаем количество строк
+    rows_count = len(driver.find_elements(
+        By.CSS_SELECTOR, ".js-ads-table-body tr"))
+    print(f"[ПАРСИНГ] Найдено строк в таблице: {rows_count}")
 
-    # Заголовки CSV (стараемся соответствовать видимым колонкам)
+    # Заголовки
     headers = [
-        "Ad Title",
-        "URL",
-        "Views",
-        "Opened",
-        "Clicks",
-        "Actions",
-        "CTR",
-        "CVR",
-        "CPM",
-        "CPC",
-        "CPA",
-        "Spent",
-        "Budget",
-        "Target",
-        "Status",
-        "Date Added",
+        "Ad Title", "URL", "Views", "Opened", "Clicks", "Actions",
+        "CTR", "CVR", "CPM", "CPC", "CPA", "Spent", "Budget", "Target", "Status", "Date Added",
     ]
 
     data_rows: list[list[str]] = []
 
-    for r in rows:
-        tds = r.find_elements(By.CSS_SELECTOR, "td")
-        if not tds:
-            continue
-
-        # 1) Первая ячейка: заголовок и URL
-        title_cell = tds[0]
-        title_link = None
-        url_link = None
+    # Итерируемся по индексам, а не по элементам
+    for i in range(rows_count):
         try:
-            title_link = title_cell.find_element(
-                By.CSS_SELECTOR, ".pr-cell-title a.pr-link")
-        except Exception:
+            # Каждый раз ищем строку заново
+            rows = driver.find_elements(
+                By.CSS_SELECTOR, ".js-ads-table-body tr")
+            if i >= len(rows):
+                break
+            r = rows[i]
+
+            tds = r.find_elements(By.CSS_SELECTOR, "td")
+            if not tds:
+                continue
+
+            # 1) Первая ячейка: заголовок и URL
+            title_cell = tds[0]
             title_link = None
-        try:
-            url_link = title_cell.find_element(
-                By.CSS_SELECTOR, "small a[target='_blank']")
-        except Exception:
             url_link = None
-
-        ad_title = _safe_text(title_link)
-        ad_url = _safe_text(url_link)
-
-        # Далее ячейки идут по порядку как в шапке (некоторые могут быть скрыты стилями)
-        def cell_text(idx: int) -> str:
             try:
-                cell = tds[idx]
-                link = None
-                # Часто значение находится в ссылке .pr-link
-                try:
-                    link = cell.find_element(By.CSS_SELECTOR, "a.pr-link")
-                except Exception:
-                    link = None
-                text = _safe_text(link) or _safe_text(cell)
-                return text.replace("\n", " ").strip()
+                title_link = title_cell.find_element(
+                    By.CSS_SELECTOR, ".pr-cell-title a.pr-link")
             except Exception:
-                return ""
+                title_link = None
+            try:
+                url_link = title_cell.find_element(
+                    By.CSS_SELECTOR, "small a[target='_blank']")
+            except Exception:
+                url_link = None
 
-        # Индексация: [0] уже использовали под заголовок/URL
-        views = cell_text(1)
-        opened = cell_text(2)
-        clicks = cell_text(3)
-        actions = cell_text(4)
-        ctr = cell_text(5)
-        cvr = cell_text(6)
-        cpm = cell_text(7)
-        cpc = cell_text(8)
-        cpa = cell_text(9)
-        spent = cell_text(10)
-        budget = cell_text(11)
+            ad_title = _safe_text(title_link)
+            ad_url = _safe_text(url_link)
 
-        # Target (обычно 12-я по индексу 12)
-        target = cell_text(12)
-        status = cell_text(13)
-        date_added = cell_text(14)
+            # Далее ячейки идут по порядку как в шапке
+            def cell_text(idx: int) -> str:
+                try:
+                    cell = tds[idx]
+                    link = None
+                    try:
+                        link = cell.find_element(By.CSS_SELECTOR, "a.pr-link")
+                    except Exception:
+                        link = None
+                    text = _safe_text(link) or _safe_text(cell)
+                    return text.replace("\n", " ").strip()
+                except Exception:
+                    return ""
 
-        data_rows.append([
-            ad_title,
-            ad_url,
-            views,
-            opened,
-            clicks,
-            actions,
-            ctr,
-            cvr,
-            cpm,
-            cpc,
-            cpa,
-            spent,
-            budget,
-            target,
-            status,
-            date_added,
-        ])
+            # Индексация: [0] уже использовали под заголовок/URL
+            views = cell_text(1)
+            opened = cell_text(2)
+            clicks = cell_text(3)
+            actions = cell_text(4)
+            ctr = cell_text(5)
+            cvr = cell_text(6)
+            cpm = cell_text(7)
+            cpc = cell_text(8)
+            cpa = cell_text(9)
+            spent = cell_text(10)
+            budget = cell_text(11)
+            target = cell_text(12)
+            status = cell_text(13)
+            date_added = cell_text(14)
+
+            data_rows.append([
+                ad_title, ad_url, views, opened, clicks, actions,
+                ctr, cvr, cpm, cpc, cpa, spent, budget, target, status, date_added,
+            ])
+
+        except Exception as e:
+            print(f"[ПАРСИНГ] Ошибка при парсинге строки {i}: {e}")
+            continue
 
     # Создаём DataFrame и сохраняем в Excel
     df = pd.DataFrame(data_rows, columns=headers)
-
-    # Добавляем информацию о времени экспорта
     df['Экспорт выполнен'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Сохраняем в Excel с форматированием
     with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
         df.to_excel(writer, sheet_name='Объявления', index=False)
 
@@ -389,6 +370,8 @@ def parse_ads_table_to_excel(excel_path: str, timeout: int = 30) -> None:
             worksheet.column_dimensions[column_letter].width = adjusted_width
 
     print(f"[ФАЙЛ ГОТОВ] {excel_path} готов и можно скачивать.")
+    print(
+        f"[ПАРСИНГ] Файл {excel_path} существует: {os.path.exists(excel_path)}")
 
 
 if __name__ == "__main__":
