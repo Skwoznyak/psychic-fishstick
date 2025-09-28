@@ -47,8 +47,29 @@ def open_login_page(phone: str) -> None:
     driver = get_driver()
     driver.get("https://ads.telegram.org/account")
     import time
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.common.keys import Keys
 
     wait = WebDriverWait(driver, 10)
+
+    # Попробовать закрыть popup, если он есть
+    try:
+        close_btn = driver.find_element(
+            By.CSS_SELECTOR, ".popup-container .close, .popup-container .close-btn, .popup-container button[aria-label='Close']")
+        close_btn.click()
+        time.sleep(1)
+    except Exception:
+        pass
+
+    # Ждать, пока popup исчезнет
+    try:
+        wait.until(EC.invisibility_of_element_located(
+            (By.ID, "login-popup-container")))
+    except Exception:
+        pass
+
     # 1. Дождаться, когда кнопка станет кликабельной, и кликнуть по ней
     login_btn = wait.until(EC.element_to_be_clickable(
         (By.CSS_SELECTOR, "a.login-link")))
