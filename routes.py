@@ -4,7 +4,7 @@ from services import (
     persist_cookies,
     get_last_parsed_file,
 )
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Body
 from fastapi.responses import FileResponse, JSONResponse
 import os
 
@@ -21,10 +21,10 @@ def root() -> dict:
 
 
 @router.post("/auth/start", tags=['Авторизация'], dependencies=[Depends(security.access_token_required)])
-def auth_start() -> dict:
-    open_login_page()
+def auth_start(phone: str = Body(..., embed=True)) -> dict:
+    open_login_page(phone)
     return {
-        "message": "Открыл страницу входа. Выполните вход вручную в окне браузера, затем вызовите /auth/save",
+        "message": "Номер телефона отправлен. Дальнейшие шаги (код из Telegram) нужно реализовать отдельно.",
     }
 
 
