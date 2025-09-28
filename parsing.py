@@ -117,6 +117,7 @@ def main():
     parse_ads_table_to_excel(export_path)
     print(f"\n✅ Таблица объявлений сохранена: {export_path}")
     print("\n✅ Готово. Окно оставлено открытым. Закройте его вручную, когда закончите.")
+    print(f"[ФАЙЛ ГОТОВ] {export_path} готов и можно скачивать.")
     # Держим скрипт активным, чтобы окно не закрывалось
     try:
         input("Нажмите Enter в консоли, чтобы закрыть драйвер и завершить скрипт...")
@@ -386,6 +387,8 @@ def parse_ads_table_to_excel(excel_path: str, timeout: int = 30) -> None:
                     pass
             adjusted_width = min(max_length + 2, 50)  # Максимум 50 символов
             worksheet.column_dimensions[column_letter].width = adjusted_width
+
+    print(f"[ФАЙЛ ГОТОВ] {excel_path} готов и можно скачивать.")
 
 
 if __name__ == "__main__":
