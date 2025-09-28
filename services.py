@@ -38,9 +38,28 @@ def get_last_parsed_file():
         return None
 
 
-def open_login_page() -> None:
+def open_login_page(phone: str) -> None:
     driver = get_driver()
     driver.get("https://ads.telegram.org/account")
+    import time
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.common.keys import Keys
+
+    # 1. Нажать на кнопку "Log in to Start Advertizing"
+    login_btn = driver.find_element(By.CSS_SELECTOR, "a.login-link")
+    login_btn.click()
+    time.sleep(1)
+
+    # 2. Ввести телефон
+    phone_input = driver.find_element(By.ID, "phone-number")
+    phone_input.clear()
+    phone_input.send_keys(phone)
+    time.sleep(1)
+
+    # 3. Нажать на кнопку "Next"
+    next_btn = driver.find_element(
+        By.CSS_SELECTOR, "button[type='submit'].btn-link.btn-lg")
+    next_btn.click()
     time.sleep(2)
 
 
