@@ -10,6 +10,7 @@ from services import (
     start_parsing_panda28,
     start_parsing_buybox,
     start_parsing_colife,
+    start_parsing_gepard_agency,
     start_parsing_async,
     get_parsing_status,
 )
@@ -159,4 +160,21 @@ def run_colife(background_tasks: BackgroundTasks) -> JSONResponse:
         status_code=202,
         content={
             "message": "Парсинг Colife Invest запущен. Проверьте результат по /download, когда задача завершится."},
+    )
+
+
+@router_parsing.post("/elama-379335 gepard-agency", tags=['Парсинг страницы'], dependencies=[Depends(security.access_token_required)])
+def run_gepard_agency(background_tasks: BackgroundTasks) -> JSONResponse:
+    if not load_cookies():
+        return JSONResponse(
+            status_code=409,
+            content={
+                "message": "Нет сохранённых куки. Сначала вызовите /auth/start, войдите вручную и затем /auth/save",
+            },
+        )
+    background_tasks.add_task(start_parsing_gepard_agency)
+    return JSONResponse(
+        status_code=202,
+        content={
+            "message": "Парсинг elama-379335 gepard-agency запущен. Проверьте результат по /download, когда задача завершится."},
     )

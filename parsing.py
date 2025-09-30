@@ -10,6 +10,7 @@ import csv
 import pandas as pd
 from datetime import datetime, timedelta
 from selenium.webdriver.chrome.service import Service
+import sys
 
 # Ленивая инициализация драйвера, чтобы он не создавался на импорт модуля
 driver = None
@@ -25,9 +26,26 @@ def get_driver():
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.binary_location = "/usr/bin/chromium"
-        service = Service("/usr/bin/chromedriver")
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+
+        # На Windows и macOS используем авто-поиск драйвера (Selenium Manager)
+        # На Linux в контейнере используем фиксированные пути, если они существуют
+        try:
+            if sys.platform.startswith("linux") and os.path.exists("/usr/bin/chromedriver"):
+                chrome_options.binary_location = "/usr/bin/chromium"
+                service = Service("/usr/bin/chromedriver")
+                driver = webdriver.Chrome(
+                    service=service, options=chrome_options)
+            else:
+                # Пусть Selenium сам найдёт установленный Chrome/Chromium и драйвер
+                driver = webdriver.Chrome(options=chrome_options)
+        except Exception as e:
+            # Фолбэк: пробуем без headless и без спец-настроек
+            try:
+                basic_options = webdriver.ChromeOptions()
+                basic_options.add_experimental_option("detach", True)
+                driver = webdriver.Chrome(options=basic_options)
+            except Exception:
+                raise e
     return driver
 
 
@@ -306,6 +324,12 @@ def parse_ads_table_to_excel(excel_path: str, timeout: int = 60) -> None:
             f"[ФАЙЛ ГОТОВ] {excel_path} готов и можно скачивать (пустой файл для отладки).")
         return
 
+    # Перед парсингом загружаем все строки через прокрутку
+    try:
+        _load_all_rows_by_scrolling(wait)
+    except Exception as e:
+        print(f"[ПАРСИНГ] ⚠️ Не удалось догрузить все строки прокруткой: {e}")
+
     # Получаем количество строк
     rows_count = len(driver.find_elements(
         By.CSS_SELECTOR, ".js-ads-table-body tr"))
@@ -431,3 +455,50 @@ def parse_ads_table_to_excel(excel_path: str, timeout: int = 60) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+def _load_all_rows_by_scrolling(wait: WebDriverWait, pause: float = 1.0, max_attempts: int = 100) -> None:
+    """Прокручивает страницу вниз, пока количество строк таблицы растёт.
+
+    Работает для таблиц, которые подгружают новые строки по мере прокрутки.
+    Останавливается, когда дважды подряд размер не меняется или достигнут лимит попыток.
+    """
+    driver = get_driver()
+
+    # Убедимся, что таблица есть
+    wait.until(EC.presence_of_element_located(
+        (By.CSS_SELECTOR, ".js-ads-table-body")))
+
+    last_count = -1
+    stable_iters = 0
+
+    for attempt in range(max_attempts):
+        rows = driver.find_elements(By.CSS_SELECTOR, ".js-ads-table-body tr")
+        count = len(rows)
+
+        if count == last_count:
+            stable_iters += 1
+        else:
+            stable_iters = 0
+
+        print(f"[ПАРСИНГ] Прокрутка попытка {attempt+1}: строк {count}")
+
+        if stable_iters >= 2:
+            print("[ПАРСИНГ] Похоже, всё загружено. Прекращаю прокрутку.")
+            break
+
+        last_count = count
+
+        # Прокручиваем в самый низ
+        driver.execute_script(
+            "window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(pause)
+
+        # На всякий случай пробуем прокрутить контейнер таблицы (если он прокручиваемый)
+        try:
+            table_body = driver.find_element(
+                By.CSS_SELECTOR, ".js-ads-table-body")
+            driver.execute_script(
+                "arguments[0].scrollTop = arguments[0].scrollHeight;", table_body)
+        except Exception:
+            pass

@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 from routes import router
 from auth import auth_router
@@ -11,6 +14,15 @@ from routes_parsing import router_parsing
 app = FastAPI(title="Telegram Ads Parser API")
 security.handle_errors(app)
 
+# Подключаем статические файлы фронтенда
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+# Маршрут для главной страницы
+
+
+@app.get("/")
+async def read_index():
+    return FileResponse('frontend/index.html')
 
 app.include_router(auth_router)
 app.include_router(router)
@@ -25,9 +37,5 @@ app.add_middleware(
 )
 
 
-
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    
-    
-    

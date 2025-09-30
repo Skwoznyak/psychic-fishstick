@@ -289,6 +289,39 @@ async def start_parsing_async():
         await loop.run_in_executor(executor, start_parsing_background_job_elama_856489_nudnoi_ru)
 
 
+def _start_parsing_generic(account_title: str, filename: str) -> None:
+    """Общий парсер: кликает по аккаунту с именем account_title и сохраняет в filename."""
+    update_parsing_status(f"🚀 Начало парсинга {account_title}", True)
+    if not load_cookies():
+        update_parsing_status("❌ Нет сохраненных куки", False)
+        return
+
+    driver = get_driver()
+    driver.get("https://ads.telegram.org/account")
+    time.sleep(3)
+
+    update_parsing_status("🎯 Ищу кнопку аккаунта...")
+    try:
+        clic_elama_856489_nudnoi_ru(account_title, timeout=60)
+        update_parsing_status("✅ Кнопка найдена и нажата")
+    except Exception as e:
+        update_parsing_status(f"❌ Не удалось найти кнопку: {e}")
+
+    update_parsing_status("⏰ Проверяю время жизни токена...")
+    check_token_lifetime()
+
+    update_parsing_status("📊 Начинаю парсинг данных...")
+    parse_ads_table_to_excel(filename)
+    save_last_parsed_file(filename)
+    update_parsing_status("✅ Парсинг завершён", False)
+
+
+def start_parsing_gepard_agency() -> None:
+    """Парсинг для elama-379335 gepard-agency"""
+    _start_parsing_generic("elama-379335 gepard-agency",
+                           "gepard-agency_export.xlsx")
+
+
 def get_parsing_status():
     """Возвращает текущий статус парсинга"""
     with parsing_lock:

@@ -337,9 +337,9 @@ async function handleParse(event) {
     addLogEntry(`🚀 Начало парсинга ${account}`, 'status');
 
     try {
-        const endpoint = account === 'elama-856489 nudnoi.ru'
-            ? '/parsing/elama-856489%20nudnoi.ru'
-            : `/parsing/${account}`;
+        // Автоматически кодируем endpoint (учёт пробелов и спецсимволов)
+        const safeAccount = encodeURIComponent(account);
+        const endpoint = `/parsing/${safeAccount}`;
 
         const response = await apiRequest(endpoint, {
             method: 'POST'
