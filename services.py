@@ -32,6 +32,10 @@ parsing_status = {
 
 parsing_lock = threading.Lock()
 
+# Абсолютный путь к last_parsed.json
+LAST_PARSED_PATH = os.path.join(os.path.abspath(
+    os.path.dirname(__file__)), "last_parsed.json")
+
 
 def export_path() -> str:
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), "elama-856489 nudnoi.ru.xlsx")
@@ -40,7 +44,7 @@ def export_path() -> str:
 def save_last_parsed_file(filename: str):
     """Сохраняет информацию о последнем созданном файле"""
     timestamp = datetime.now().isoformat()
-    with open("last_parsed.json", "w") as f:
+    with open(LAST_PARSED_PATH, "w") as f:
         json.dump({"filename": filename, "timestamp": timestamp}, f)
     print(f"✅ [ФАЙЛ ГОТОВ] {filename} сохранен в {timestamp}")
     print(f"📁 [СКАЧИВАНИЕ] Файл готов к скачиванию по /download")
@@ -49,10 +53,11 @@ def save_last_parsed_file(filename: str):
 def get_last_parsed_file():
     """Получает информацию о последнем созданном файле"""
     try:
-        with open("last_parsed.json", "r") as f:
+        with open(LAST_PARSED_PATH, "r") as f:
             data = json.load(f)
             return data["filename"]
-    except:
+    except Exception as e:
+        print(f"[ОШИБКА] Не удалось прочитать last_parsed.json: {e}")
         return None
 
 

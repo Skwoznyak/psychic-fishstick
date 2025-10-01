@@ -39,31 +39,39 @@ def get_parsing_status() -> dict:
     """Проверяет статус последнего парсинга"""
     try:
         last_file = get_last_parsed_file()
+        # Пример: читаем лог из файла process.log (или подставьте свою логику)
+        process_log = None
+        try:
+            with open("process.log", "r", encoding="utf-8") as logf:
+                process_log = logf.read()
+        except Exception:
+            process_log = "Лог недоступен или отсутствует."
         if not last_file:
             return {
                 "status": "no_files",
                 "message": "Нет файлов для скачивания. Сначала запустите парсинг любого аккаунта",
                 "last_file": None,
-                "ready_to_download": False
+                "ready_to_download": False,
+                "process": process_log
             }
-
         path = os.path.join(os.path.abspath(
             os.path.dirname(__file__)), last_file)
         file_exists = os.path.exists(path)
-
         return {
             "status": "ready" if file_exists else "processing",
             "message": f"Файл {last_file} {'готов к скачиванию' if file_exists else 'еще обрабатывается'}",
             "last_file": last_file,
             "ready_to_download": file_exists,
-            "file_path": path if file_exists else None
+            "file_path": path if file_exists else None,
+            "process": process_log
         }
     except Exception as e:
         return {
             "status": "error",
             "message": f"Ошибка при проверке статуса: {str(e)}",
             "last_file": None,
-            "ready_to_download": False
+            "ready_to_download": False,
+            "process": f"Ошибка получения лога: {str(e)}"
         }
 
 
