@@ -13,6 +13,7 @@ from services import (
     start_parsing_gepard_agency,
     start_parsing_async,
     get_parsing_status,
+    get_last_parsed_file,
 )
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
 from fastapi.responses import FileResponse, JSONResponse
@@ -178,3 +179,26 @@ def run_gepard_agency(background_tasks: BackgroundTasks) -> JSONResponse:
         content={
             "message": "Парсинг elama-379335 gepard-agency запущен. Проверьте результат по /download, когда задача завершится."},
     )
+
+
+@router_parsing.get("/download", tags=['Скачать таблицу'], dependencies=[Depends(security.access_token_required)])
+def download_file() -> FileResponse:
+    try:
+        last_file = get_last_parsed_file()
+        if not last_file:
+            raise HTTPException(
+                status_code=404,
+                detail="Нет файлов для скачивания. Сначала запустите парсинг любого аккаунта"
+            )
+        path = os.path.join(os.path.abspath(
+            os.path.dirname(__file__)), last_file)
+        if not os.path.exists(path):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Файл {last_file} не найден. Возможно, парсинг еще не завершился"
+            )
+        return FileResponse(path, filename=last_file, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=403, detail="У вас нет доступов")
