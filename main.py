@@ -16,14 +16,14 @@ app = FastAPI(title="Telegram Ads Parser API")
 security.handle_errors(app)
 
 # Подключаем статические файлы фронтенда
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Маршрут для главной страницы
 
 
 @app.get("/")
 async def read_index():
-    return FileResponse('frontend/index.html')
+    return FileResponse('static/index.html')
 
 app.include_router(auth_router)
 app.include_router(router)
