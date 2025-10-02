@@ -26,9 +26,15 @@ def get_driver():
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
-
-        # На Windows и macOS используем авто-поиск драйвера (Selenium Manager)
-        # На Linux в контейнере используем фиксированные пути, если они существуют
+        # Отключаем картинки, шрифты и т.д. для ускорения
+        prefs = {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.managed_default_content_settings.fonts": 2,
+            "profile.managed_default_content_settings.stylesheets": 1,
+            "profile.managed_default_content_settings.cookies": 1,
+            "profile.managed_default_content_settings.javascript": 1,  # JS нужен для Telegram Ads
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
         try:
             if sys.platform.startswith("linux") and os.path.exists("/usr/bin/chromedriver"):
                 chrome_options.binary_location = "/usr/bin/chromium"
@@ -36,10 +42,8 @@ def get_driver():
                 driver = webdriver.Chrome(
                     service=service, options=chrome_options)
             else:
-                # Пусть Selenium сам найдёт установленный Chrome/Chromium и драйвер
                 driver = webdriver.Chrome(options=chrome_options)
         except Exception as e:
-            # Фолбэк: пробуем без headless и без спец-настроек
             try:
                 basic_options = webdriver.ChromeOptions()
                 basic_options.add_experimental_option("detach", True)
@@ -61,14 +65,11 @@ def manual_login():
     print("2. Войдите в свой аккаунт")
     print("3. После успешного входа нажмите Enter здесь в консоли")
     print("=" * 50)
-
-    # Открываем сайт для ручного входа
     driver.get("https://ads.telegram.org/account")
-    time.sleep(2)
-
-    # Сохраняем куки после авторизации
+    # Было: time.sleep(2)
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.TAG_NAME, "body")))
     save_cookies()
-
     print("✅ Авторизация завершена! Куки сохранены.")
     return True
 
@@ -87,17 +88,16 @@ def load_cookies():
     driver = get_driver()
     if os.path.exists(COOKIES_FILE):
         driver.get("https://ads.telegram.org/account")
-        time.sleep(2)
-
+        # Было: time.sleep(2)
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body")))
         with open(COOKIES_FILE, 'rb') as file:
             cookies = pickle.load(file)
-
             for cookie in cookies:
                 try:
                     driver.add_cookie(cookie)
                 except:
                     continue
-
         print("✅ Куки загружены!")
         return True
     else:
@@ -108,24 +108,17 @@ def load_cookies():
 def main():
     """Точка входа: загружаем куки или просим ручной логин и держим окно открытым."""
     driver = get_driver()
-    # Сначала пробуем загрузить куки; если их нет — просим ручной вход
     logged_in = load_cookies()
     if not logged_in:
         manual_login()
-
-    # После успешной авторизации переходим в кабинет
     driver.get("https://ads.telegram.org/account")
-
-    # Ждём загрузки страницы
-    time.sleep(3)
-
-    # Автоклик по кнопке с подстрокой "elama-856489 nudnoi.ru", чтобы открыть таблицу объявлений
+    # Было: time.sleep(3)
+    WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.TAG_NAME, "body")))
     try:
         clic_elama_856489_nudnoi_ru("elama-856489 nudnoi.ru", timeout=60)
     except Exception:
         pass
-
-    # Парсим таблицу объявлений и сохраняем в CSV
     export_path = os.path.join(os.path.abspath(
         os.path.dirname(__file__)), "elama-856489 nudnoi.ru.xlsx")
     check_token_lifetime()
@@ -133,7 +126,6 @@ def main():
     print(f"\n✅ Таблица объявлений сохранена: {export_path}")
     print("\n✅ Готово. Окно оставлено открытым. Закройте его вручную, когда закончите.")
     print(f"[ФАЙЛ ГОТОВ] {export_path} готов и можно скачивать.")
-    # Держим скрипт активным, чтобы окно не закрывалось
     driver.quit()
 
 
@@ -449,44 +441,30 @@ if __name__ == "__main__":
     main()
 
 
-def _load_all_rows_by_scrolling(wait: WebDriverWait, pause: float = 1.0, max_attempts: int = 100) -> None:
-    """Прокручивает страницу вниз, пока количество строк таблицы растёт.
-
-    Работает для таблиц, которые подгружают новые строки по мере прокрутки.
-    Останавливается, когда дважды подряд размер не меняется или достигнут лимит попыток.
-    """
+def _load_all_rows_by_scrolling(wait: WebDriverWait, pause: float = 0.5, max_attempts: int = 100) -> None:
+    """Прокручивает страницу вниз, пока количество строк таблицы растёт."""
     driver = get_driver()
-
-    # Убедимся, что таблица есть
     wait.until(EC.presence_of_element_located(
         (By.CSS_SELECTOR, ".js-ads-table-body")))
-
     last_count = -1
     stable_iters = 0
-
     for attempt in range(max_attempts):
         rows = driver.find_elements(By.CSS_SELECTOR, ".js-ads-table-body tr")
         count = len(rows)
-
         if count == last_count:
             stable_iters += 1
         else:
             stable_iters = 0
-
         print(f"[ПАРСИНГ] Прокрутка попытка {attempt+1}: строк {count}")
-
         if stable_iters >= 2:
             print("[ПАРСИНГ] Похоже, всё загружено. Прекращаю прокрутку.")
             break
-
         last_count = count
-
-        # Прокручиваем в самый низ
         driver.execute_script(
             "window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(pause)
-
-        # На всякий случай пробуем прокрутить контейнер таблицы (если он прокручиваемый)
+        # Было: time.sleep(pause)
+        WebDriverWait(driver, pause).until(
+            lambda d: True)  # Просто короткая пауза
         try:
             table_body = driver.find_element(
                 By.CSS_SELECTOR, ".js-ads-table-body")
