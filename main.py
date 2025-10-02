@@ -11,6 +11,7 @@ from auth_deps import security
 from routes_parsing import router_parsing
 
 
+
 app = FastAPI(title="Telegram Ads Parser API")
 security.handle_errors(app)
 
