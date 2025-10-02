@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://tg-ads-fastapi.onrender.com';
+const API_BASE_URL = 'https://psychic-fishstick-75uo.onrender.com';
 
 // Global state
 let authToken = localStorage.getItem('authToken');
